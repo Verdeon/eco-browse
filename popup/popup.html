@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoBrowse+</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="popup">
+    <div id="logo-container">
+      <img src="../icons/icon128.png" alt="EcoBrowse+ Logo" id="logo" />
+      <h1>EcoBrowse</h1>
+    </div>
+
+    <div id="current-site-info">
+      <p>Aktif Site: <span id="site-name">Yükleniyor...</span></p>
+      <p>Geçirilen Süre: <span id="time-spent">00:00</span></p>
+      <p>Bu Sayfa Tahmini CO₂: <span id="current-carbon">0.00g/dk</span></p>
+      <p>Bu Sitede Toplam CO₂: <span id="site-total-carbon">0.00g</span></p>
+    </div>
+
+    <hr>
+
+    <div id="global-stats">
+      <h2>🌍 Genel Karbon Takibi</h2>
+      <p>Tüm Ziyaret Edilen Siteler İçin Tahmini Toplam CO₂: <span id="overall-total-carbon">0.00g</span></p>
+      <div id="tree-suggestion">
+        </div>
+    </div>
+
+    <hr>
+
+    <div id="history-section">
+      <h2>📜 Geçmiş Karbon Verileri</h2>
+      <div id="history-list-wrapper">
+        <ul id="history-list">
+          <li>Henüz geçmiş veri bulunmamaktadır.</li>
+        </ul>
+      </div>
+      <button id="clear-history-btn">Geçmişi Temizle</button>
+    </div>
+
+    <div id="carbon-fact">
+      <h2>Bilgi Edinelim 🌱</h2>
+      <p id="fact-text">Yükleniyor...</p>
+    </div>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+<div class="modal" id="confirm-modal">
+  <div class="modal-content">
+    <p>Geçmişi silmek istediğinizden emin misiniz?</p>
+    <div class="modal-buttons">
+      <button class="cancel" id="modal-cancel">İptal</button>
+      <button class="confirm" id="modal-confirm">Evet, Sil</button>
+    </div>
+  </div>
+</div>
+
+</html>
