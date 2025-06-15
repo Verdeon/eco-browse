@@ -87,41 +87,41 @@ async function checkGreenWebStatus(hostname) {
 }
 
 
-// Hostname'e göre tahmini karbon değeri döndürür
 async function getEstimatedCarbonPerMinute(hostname) {
-    // İlk olarak manuel olarak tanımlanmış site karbon tahminlerini kontrol et
-    // Bu, API'den veri alınamazsa veya belirli siteler için özel değerler istenirse bir yedek görevi görür.
-    if (siteCarbonEstimates[hostname]) {
-        return siteCarbonEstimates[hostname];
-    }
+  const cacheKey = `carbonCache_${hostname}`;
+  const cache = (await chrome.storage.local.get(cacheKey))[cacheKey];
 
-    // Bilinmeyen veya uzantı sayfası gibi özel durumlar için 0 döndür
-    if (!hostname || hostname === 'bilinmeyen-site' || hostname === '') {
-        return 0;
-    }
+  // Önbellekte varsa ve 24 saatten eski değilse kullan
+  if (cache && (Date.now() - cache.timestamp < 24 * 60 * 60 * 1000)) {
+    return cache.carbonPerMinute;
+  }
 
-    // Green Web Foundation durumunu kontrol et
-    const isGreen = await checkGreenWebStatus(hostname);
+  // API'den veri al
+  try {
+    const response = await fetch(`https://api.websitecarbon.com/site?url=https://${hostname}`);
+    if (!response.ok) throw new Error(`Website Carbon API hata: ${response.status}`);
+    const data = await response.json();
 
-    if (isGreen === true) {
-        return CARBON_PER_MINUTE_LOW_TRAFFIC; // Yeşilse daha az karbon
-    } else if (isGreen === false) {
-        return CARBON_PER_MINUTE_HIGH_TRAFFIC; // Yeşil değilse daha çok karbon
-    } else {
-        // API'den veri alınamazsa veya hata olursa, genel kategorileri kullan
-        // Bu kısım, Green Web API'si kullanılamadığında bir fallback (geri dönüş) görevi görür.
-        // Artık daha jenerik hostname.includes() kontrolleri daha mantıklı.
-        if (hostname.includes('youtube.com') || hostname.includes('netflix.com') || hostname.includes('video')) {
-            return 1.8; // Video siteleri (varsayılan API yoksa)
-        }
-        if (hostname.includes('facebook.com') || hostname.includes('twitter.com') || hostname.includes('instagram.com')) {
-            return CARBON_PER_MINUTE_HIGH_TRAFFIC; 
-        }
-        if (hostname.includes('google.com') || hostname.includes('mail.') || hostname.includes('wikipedia.org') || hostname.includes('blog')) {
-             return CARBON_PER_MINUTE_LOW_TRAFFIC; // Genel bilgi/e-posta siteleri
-        }
-        return CARBON_PER_MINUTE_DEFAULT; // Hiçbir eşleşme yoksa varsayılan
-    }
+    const gramsPerPageLoad = data.carbon.grams || 0;
+    const carbonPerMinute = gramsPerPageLoad / 2; // Ortalama ziyaret süresi 2 dk
+
+    // Önbelleğe yaz
+    await chrome.storage.local.set({
+      [cacheKey]: {
+        carbonPerMinute,
+        timestamp: Date.now()
+      }
+    });
+
+    return carbonPerMinute;
+
+  } catch (error) {
+    console.error("Website Carbon API hatası:", error);
+
+    // Hata olursa yedek değerlere dön
+    if (siteCarbonEstimates[hostname]) return siteCarbonEstimates[hostname];
+    return CARBON_PER_MINUTE_DEFAULT;
+  }
 }
 
 // Toplam karbonu kaydetme
@@ -206,6 +206,8 @@ chrome.tabs.onActivated.addListener(activeInfo => {
             if (newHostname !== currentActiveHostname) {
                 currentActiveHostname = newHostname; 
             }
+            await getEstimatedCarbonPerMinute(currentActiveHostname);
+
             console.log(`BG: Sekme değişti. Aktif hostname: ${currentActiveHostname}`);
             startTimer(); 
         } else {
@@ -221,8 +223,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         const newHostname = cleanHostname(tab.url);
         if (newHostname !== currentActiveHostname) {
             currentActiveHostname = newHostname;
-            console.log(`BG: URL güncellendi. Aktif hostname: ${currentActiveHostname}`);
-            startTimer();
+            getEstimatedCarbonPerMinute(currentActiveHostname).then(() => {
+                console.log(`BG: URL güncellendi. Aktif hostname: ${currentActiveHostname}`);
+                startTimer();
+            });
         }
     }
 });
@@ -295,4 +299,30 @@ chrome.runtime.onInstalled.addListener(() => {
             startTimer();
         }
     });
+});
+
+setInterval(() => {
+    chrome.tabs.query({ active: true, currentWindow: true }, async tabs => {
+        if (tabs[0] && tabs[0].url && (tabs[0].url.startsWith('http://') || tabs[0].url.startsWith('https://'))) {
+            const newHostname = cleanHostname(tabs[0].url);
+            if (newHostname !== currentActiveHostname) {
+                currentActiveHostname = newHostname;
+                await getEstimatedCarbonPerMinute(currentActiveHostname);
+                startTimer();
+                console.log(`BG: Arka planda hostname değişimi algılandı: ${currentActiveHostname}`);
+            }
+        }
+    });
+}, 5000);
+
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    if (message.type === "urlChanged" && message.url) {
+        const newHostname = cleanHostname(message.url);
+        if (newHostname !== currentActiveHostname) {
+            currentActiveHostname = newHostname;
+            await getEstimatedCarbonPerMinute(currentActiveHostname);
+            startTimer();
+            console.log(`BG: content.js'ten gelen yönlendirme algılandı: ${currentActiveHostname}`);
+        }
+    }
 });

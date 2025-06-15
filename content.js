@@ -43,3 +43,27 @@ function showCarbonSuggestion(carbonPerMinute, alternatives) {
         }, 500); 
     }, 8000); 
 }
+
+let lastURL = location.href;
+
+function checkURLChange() {
+    if (location.href !== lastURL) {
+        lastURL = location.href;
+        chrome.runtime.sendMessage({ type: "urlChanged", url: location.href });
+    }
+}
+
+window.addEventListener("click", () => {
+    setTimeout(checkURLChange, 200); // Tıklamadan sonra olası yönlendirmeyi bekle
+});
+
+window.addEventListener("popstate", () => {
+    checkURLChange(); // Geri/ileri butonu gibi durumlar
+});
+
+// Eğer sayfa kendi içinde programatik olarak yönleniyorsa:
+const pushState = history.pushState;
+history.pushState = function (...args) {
+    pushState.apply(history, args);
+    checkURLChange();
+};
