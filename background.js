@@ -1,6 +1,4 @@
 const CARBON_PER_MINUTE_DEFAULT = 0.5; // Varsayılan g CO2/dk
-const CARBON_PER_MINUTE_HIGH_TRAFFIC = 1.2; // Yeşil olmayan veya yüksek trafikli siteler için
-const CARBON_PER_MINUTE_LOW_TRAFFIC = 0.2;  // Yeşil veya düşük trafikli siteler için
 
 // Bu liste artık dinamik olarak API ile güncellenecek, bu sadece bir yedek/tahmin listesidir.
 const siteCarbonEstimates = {
