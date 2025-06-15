@@ -262,3 +262,14 @@ document.addEventListener('DOMContentLoaded', () => {
     displayCarbonFact(); 
     setInterval(displayCarbonFact, 30000); 
 });
+
+const toggleBtn = document.getElementById("history-toggle");
+const wrapper = document.getElementById("history-wrapper");
+
+toggleBtn.addEventListener("click", () => {
+  const isCollapsed = wrapper.classList.toggle("collapsed");
+  
+  toggleBtn.innerText = isCollapsed
+    ? "📜 Geçmiş Karbon Verileri ⬇️"
+    : "📜 Geçmiş Karbon Verileri ⬆️";
+});
